@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case Box Tracker</title>
+<link rel="icon" href="data:,">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --paper:#F3F6F5; --surface:#FFFFFF; --surface-2:#EDF2F1;
+    --ink:#161F22; --ink-muted:#51636A; --ink-faint:#7C8B90;
+    --rule:#D7E0DE; --rule-strong:#B9C6C4;
+    --accent:#265C60; --accent-ink:#0F3437; --accent-soft:#DCEBEA;
+    --hold:#A86A14; --hold-soft:#F5E4C4;
+    --pass:#3D7A55; --pass-soft:#DEEEE3;
+    --danger:#B23A32; --danger-soft:#F6DEDB;
+    --shadow: 0 1px 2px rgba(15,30,32,0.06);
+    --shadow-lg: 0 12px 32px rgba(15,30,32,0.16), 0 2px 8px rgba(15,30,32,0.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#11181A; --surface:#161F21; --surface-2:#1D282A;
+      --ink:#E6EDEC; --ink-muted:#93A6A7; --ink-faint:#6C7E80;
+      --rule:#28373A; --rule-strong:#37494C;
+      --accent:#6FBCB9; --accent-ink:#CFEDEB; --accent-soft:#193231;
+      --hold:#DE9F45; --hold-soft:#332715;
+      --pass:#7BC095; --pass-soft:#1B2E22;
+      --danger:#E58077; --danger-soft:#3A1D1A;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4);
+      --shadow-lg: 0 16px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#11181A; --surface:#161F21; --surface-2:#1D282A;
+    --ink:#E6EDEC; --ink-muted:#93A6A7; --ink-faint:#6C7E80;
+    --rule:#28373A; --rule-strong:#37494C;
+    --accent:#6FBCB9; --accent-ink:#CFEDEB; --accent-soft:#193231;
+    --hold:#DE9F45; --hold-soft:#332715;
+    --pass:#7BC095; --pass-soft:#1B2E22;
+    --danger:#E58077; --danger-soft:#3A1D1A;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-lg: 0 16px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{ margin:0; }
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .mono{ font-family:'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+  button{ font-family:inherit; } input, select, textarea{ font-family:inherit; }
+
+  /* ---- Topbar ---- */
+  .topbar{
+    position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:14px;
+    padding:14px 20px; background:var(--surface); border-bottom:1px solid var(--rule);
+    box-shadow:var(--shadow); flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; margin-right:auto; }
+  .brand-mark{
+    width:30px; height:30px; border-radius:8px; background:var(--accent); color:var(--surface);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:13px; flex-shrink:0;
+  }
+  .brand-name{ font-weight:700; font-size:16px; letter-spacing:-0.01em; }
+  .brand-sub{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-faint); }
+  .status-pill{
+    display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    color:var(--ink-faint); padding:5px 10px; border-radius:20px; border:1px solid var(--rule); white-space:nowrap;
+  }
+  .status-dot{ width:7px; height:7px; border-radius:50%; background:var(--ink-faint); flex-shrink:0; }
+  .status-dot.live{ background:var(--pass); box-shadow:0 0 0 3px var(--pass-soft); }
+  .status-dot.down{ background:var(--danger); box-shadow:0 0 0 3px var(--danger-soft); }
+  .viewer-chip{
+    font-size:12.5px; color:var(--ink-muted); padding:5px 10px; border-radius:20px; border:1px solid var(--rule);
+    background:var(--surface); white-space:nowrap;
+  }
+
+  /* ---- Buttons ---- */
+  .btn{
+    appearance:none; border:1px solid var(--rule-strong); background:var(--surface); color:var(--ink);
+    font-size:13.5px; font-weight:500; padding:8px 14px; border-radius:7px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px; white-space:nowrap; line-height:1.2;
+  }
+  .btn:hover{ border-color:var(--ink-faint); }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--surface); }
+  .btn.primary:hover{ filter:brightness(1.08); }
+  .btn.ghost{ border-color:transparent; background:transparent; }
+  .btn.ghost:hover{ background:var(--surface-2); }
+  .btn.danger{ border-color:var(--danger); color:var(--danger); }
+  .btn.danger:hover{ background:var(--danger-soft); }
+  .btn.small{ padding:5px 10px; font-size:12.5px; border-radius:6px; }
+  .btn.block{ width:100%; justify-content:center; }
+
+  /* ---- Layout ---- */
+  .page{ max-width:1180px; margin:0 auto; padding:24px 20px 80px; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:22px; }
+  .stat-tile{ background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:16px; box-shadow:var(--shadow); cursor:pointer; }
+  .stat-tile.active{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .stat-num{ font-size:26px; font-weight:700; letter-spacing:-0.01em; line-height:1; margin-bottom:6px; }
+  .stat-label{ font-size:12px; color:var(--ink-muted); }
+  .stat-tile.crit .stat-num{ color:var(--danger); }
+  .toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .input, .select{ background:var(--surface); border:1px solid var(--rule-strong); border-radius:7px; padding:8px 11px; font-size:13.5px; color:var(--ink); }
+  .input:focus, .select:focus, textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .search-input{ min-width:220px; flex:1 1 220px; }
+  .toolbar .spacer{ flex:1 1 auto; }
+
+  /* ---- Table ---- */
+  .table-card{ background:var(--surface); border:1px solid var(--rule); border-radius:10px; box-shadow:var(--shadow); overflow:hidden; }
+  .table-scroll{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; min-width:760px; }
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint);
+    font-weight:600; padding:11px 14px; border-bottom:1px solid var(--rule-strong); background:var(--surface-2); white-space:nowrap;
+  }
+  tbody td{ padding:12px 14px; border-bottom:1px solid var(--rule); vertical-align:middle; color:var(--ink-muted); }
+  tbody tr{ cursor:pointer; } tbody tr:hover{ background:var(--surface-2); } tbody tr:last-child td{ border-bottom:none; }
+  td.case-id{ font-family:'IBM Plex Mono', monospace; color:var(--ink); font-weight:600; white-space:nowrap; }
+  .empty-row{ padding:48px 20px; text-align:center; color:var(--ink-faint); font-size:14px; }
+
+  /* ---- Badges ---- */
+  .badge{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600; padding:3px 8px; border-radius:5px;
+    white-space:nowrap; display:inline-block; background:var(--surface-2); color:var(--ink-muted); border:1px solid var(--rule-strong);
+  }
+  .badge.stage1{ background:var(--accent-soft); color:var(--accent-ink); border-color:transparent; }
+  .badge.stage2{ background:var(--hold-soft); color:var(--hold); border-color:transparent; }
+  .badge.stage3{ background:var(--pass-soft); color:var(--pass); border-color:transparent; }
+  .badge.closed{ background:var(--surface-2); color:var(--ink-faint); border-color:var(--rule-strong); }
+  .badge.pr-urgent, .badge.pr-high{ background:var(--danger-soft); color:var(--danger); border-color:transparent; }
+  .badge.pr-medium{ background:var(--hold-soft); color:var(--hold); border-color:transparent; }
+  .badge.pr-low{ background:var(--surface-2); color:var(--ink-faint); border-color:var(--rule-strong); }
+  .days-tag{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-faint); }
+  .days-tag.warn{ color:var(--hold); font-weight:600; } .days-tag.crit{ color:var(--danger); font-weight:600; }
+
+  /* ---- Overlay / panel ---- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,16,17,0.5); display:flex; align-items:flex-start; justify-content:center;
+    padding:min(6vh,48px) 16px 40px; overflow-y:auto; z-index:50;
+  }
+  .panel{ background:var(--surface); border-radius:14px; box-shadow:var(--shadow-lg); width:100%; max-width:680px; margin:auto; }
+  .panel-header{
+    display:flex; align-items:center; gap:12px; padding:18px 22px; border-bottom:1px solid var(--rule);
+    position:sticky; top:0; background:var(--surface); border-radius:14px 14px 0 0; z-index:2;
+  }
+  .panel-title{ font-size:17px; font-weight:700; margin:0; flex:1; }
+  .panel-body{ padding:22px; }
+  .panel-foot{ display:flex; gap:10px; justify-content:flex-end; padding:16px 22px; border-top:1px solid var(--rule); flex-wrap:wrap; }
+
+  .field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .field-grid.single{ grid-template-columns:1fr; }
+  .field{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .field label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); font-weight:600; }
+  .field .input, .field .select, .field textarea{ width:100%; }
+  .field textarea{ background:var(--surface); border:1px solid var(--rule-strong); border-radius:7px; padding:9px 11px; font-size:13.5px; color:var(--ink); resize:vertical; min-height:64px; }
+  .field-note{ font-size:11.5px; color:var(--ink-faint); }
+  fieldset{ border:none; padding:0; margin:0 0 22px; }
+  fieldset legend{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.07em; color:var(--accent);
+    padding:0 0 10px; width:100%; border-bottom:1px solid var(--rule); margin-bottom:16px;
+  }
+  @media (max-width:560px){ .field-grid{ grid-template-columns:1fr; } }
+
+  /* ---- Detail view ---- */
+  .detail-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px; }
+  .detail-caseid{ font-family:'IBM Plex Mono', monospace; font-size:20px; font-weight:700; }
+  .stage-strip{ display:flex; align-items:center; gap:0; margin:18px 0 22px; }
+  .stage-step{ flex:1; text-align:center; padding:10px 6px; font-size:11.5px; font-weight:600; color:var(--ink-faint); background:var(--surface-2); border-top:2px solid var(--rule-strong); }
+  .stage-step.done{ color:var(--pass); border-top-color:var(--pass); background:var(--pass-soft); }
+  .stage-step.current{ color:var(--accent-ink); border-top-color:var(--accent); background:var(--accent-soft); }
+  .kv-grid{ display:grid; grid-template-columns:1fr 1fr; gap:2px 24px; margin-bottom:4px; }
+  .kv{ padding:9px 0; border-bottom:1px solid var(--rule); display:flex; justify-content:space-between; gap:12px; }
+  .kv .k{ font-size:12.5px; color:var(--ink-faint); } .kv .v{ font-size:13.5px; color:var(--ink); text-align:right; font-weight:500; }
+  @media (max-width:560px){ .kv-grid{ grid-template-columns:1fr; } }
+
+  .lock-banner{ display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px; flex-wrap:wrap; }
+  .lock-banner.busy{ background:var(--hold-soft); color:var(--hold); }
+  .lock-banner.mine{ background:var(--accent-soft); color:var(--accent-ink); }
+  .action-row{ display:flex; gap:10px; flex-wrap:wrap; margin:18px 0; }
+  .log-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0; }
+  .log-item{ padding:10px 0; border-bottom:1px solid var(--rule); font-size:13px; } .log-item:last-child{ border-bottom:none; }
+  .log-meta{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-faint); margin-bottom:3px; }
+  .log-note{ color:var(--ink); line-height:1.5; }
+  .disposition-block{ border:1px solid var(--rule); border-radius:9px; padding:14px 16px; margin-top:6px; background:var(--surface-2); }
+
+  /* ---- Toasts ---- */
+  .toast-stack{ position:fixed; bottom:18px; right:18px; z-index:80; display:flex; flex-direction:column; gap:8px; max-width:min(340px,calc(100vw - 32px)); }
+  .toast{ background:var(--ink); color:var(--paper); padding:11px 14px; border-radius:8px; font-size:13px; box-shadow:var(--shadow-lg); line-height:1.4; }
+  .toast.error{ background:var(--danger); } .toast.success{ background:var(--pass); }
+
+  .hint-box{ background:var(--accent-soft); color:var(--accent-ink); border-radius:8px; padding:12px 14px; font-size:13px; line-height:1.55; margin-bottom:18px; }
+  [hidden]{ display:none !important; }
+
+  /* ---- Login screen ---- */
+  .login-wrap{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .login-card{ width:100%; max-width:380px; background:var(--surface); border:1px solid var(--rule); border-radius:14px; box-shadow:var(--shadow-lg); padding:32px 28px; text-align:center; }
+  .login-card .brand-mark{ margin:0 auto 16px; width:44px; height:44px; font-size:16px; }
+  .login-card h1{ font-size:19px; margin:0 0 6px; }
+  .login-card p{ font-size:13.5px; color:var(--ink-muted); line-height:1.55; margin:0 0 20px; }
+  .login-card .input{ width:100%; margin-bottom:12px; padding:10px 12px; }
+  .login-note{ font-size:11.5px; color:var(--ink-faint); margin-top:16px; line-height:1.5; }
+  .config-warn{ max-width:480px; margin:60px auto; text-align:center; padding:0 20px; }
+  .config-warn h2{ font-size:17px; } .config-warn p{ color:var(--ink-muted); font-size:14px; line-height:1.6; }
+  .config-warn code{ background:var(--surface-2); padding:2px 6px; border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; }
+
+  @media (max-width:900px){ .stat-grid{ grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:600px){
+    .stat-grid{ grid-template-columns:repeat(2,1fr); }
+    .page{ padding:18px 14px 60px; }
+    .panel-body, .panel-header, .panel-foot{ padding-left:16px; padding-right:16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONFIG — paste your Supabase project's URL + anon (public) key
+     here. Find both under Project Settings → API. The anon key is
+     safe to expose in client code — it's meant to be public; Row
+     Level Security (see supabase-schema.sql) is what actually
+     controls access, not secrecy of this key.
+     ============================================================ -->
+<script>
+  window.__SUPABASE_URL__ = "https://byjkaudjpgicaptjhizo.supabase.co";
+  window.__SUPABASE_ANON_KEY__ = "sb_publishable_PYufGlqSpmPku9bm6KrKKQ_8oWpXvFG";
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
+
+<div id="configWarn" class="config-warn" hidden>
+  <h2>Setup needed</h2>
+  <p>This page hasn't been connected to a Supabase project yet. Open this HTML file in a text
+  editor and replace <code>YOUR_SUPABASE_PROJECT_URL</code> and <code>YOUR_SUPABASE_ANON_KEY</code>
+  near the top with the values from your Supabase project's Settings → API page, then re-upload it
+  wherever you're hosting it. See the setup guide for the full walkthrough.</p>
+</div>
+
+<div id="loginScreen" class="login-wrap" hidden>
+  <div class="login-card">
+    <div class="brand-mark">CB</div>
+    <h1>Case Box Tracker</h1>
+    <p>Sign in with your ClearPath email to get a one-time login link. No password to remember.</p>
+    <input class="input" id="loginEmail" type="email" placeholder="you@clearpathortho.com.pk" autocomplete="email">
+    <button class="btn primary block" id="loginBtn" type="button">Send Login Link</button>
+    <div class="login-note" id="loginNote"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">CB</div>
+      <div>
+        <div class="brand-name">Case Box Tracker</div>
+        <div class="brand-sub">Region Support &middot; QCD &middot; Production Control</div>
+      </div>
+    </div>
+    <div class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting&hellip;</span></div>
+    <span class="viewer-chip" id="viewerChip">&mdash;</span>
+    <button class="btn ghost small" id="exportBtn" type="button">Export CSV</button>
+    <button class="btn primary" id="newCaseBtn" type="button">+ New Case</button>
+    <button class="btn ghost small" id="signOutBtn" type="button">Sign Out</button>
+  </div>
+
+  <div class="page">
+    <div class="stat-grid" id="statGrid"></div>
+
+    <div class="toolbar">
+      <input class="input search-input" id="searchInput" type="text" placeholder="Search Case ID, patient, or doctor&hellip;">
+      <select class="select" id="filterStage">
+        <option value="">All stages</option>
+        <option value="1">Stage 1 &middot; Intake &amp; Case Logging</option>
+        <option value="2">Stage 2 &middot; Evaluation &amp; Reprocessing</option>
+        <option value="3">Stage 3 &middot; Remanufacture &amp; Dispatch</option>
+      </select>
+      <select class="select" id="filterStatus">
+        <option value="">All case statuses</option>
+        <option>Open</option><option>In Progress</option><option>On Hold</option>
+        <option>Resolved — Closed</option><option>Closed — Superseded</option>
+      </select>
+      <select class="select" id="filterRegion">
+        <option value="">All regions</option>
+        <option>Lahore</option><option>Islamabad</option><option>Karachi</option>
+      </select>
+      <div class="spacer"></div>
+      <span class="field-note" id="resultCount"></span>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Case ID</th><th>Patient / Doctor</th><th>Region</th><th>Stage</th><th>Status</th><th>Priority</th><th>Owner</th><th>Days in Stage</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- ============ New Case overlay ============ -->
+<div class="overlay" id="newCaseOverlay" hidden>
+  <div class="panel">
+    <div class="panel-header"><h2 class="panel-title">Log a New Case</h2><button class="btn ghost small" data-close-new type="button">Close</button></div>
+    <div class="panel-body">
+      <form id="newCaseForm">
+        <fieldset>
+          <legend>Identification</legend>
+          <div class="field-grid">
+            <div class="field"><label>Case ID *</label><input class="input" name="caseId" required placeholder="e.g. 240117"></div>
+            <div class="field"><label>Case Origin *</label><select class="select" name="caseOrigin" required><option value="">Select&hellip;</option><option>Local</option><option>Overseas</option></select></div>
+            <div class="field"><label>Box Label</label><input class="input" name="boxLabel" placeholder="Physical label on the box"></div>
+            <div class="field"><label>Region / Branch *</label><select class="select" name="region" required><option value="">Select&hellip;</option><option>Lahore</option><option>Islamabad</option><option>Karachi</option></select></div>
+            <div class="field"><label>Patient Name</label><input class="input" name="patientName"></div>
+            <div class="field"><label>Treating Doctor</label><input class="input" name="treatingDoctor"></div>
+            <div class="field"><label>Container Type</label><select class="select" name="containerType"><option>Box</option><option>Pouch</option></select></div>
+            <div class="field"><label>Transfer Tray Issued</label><select class="select" name="transferTrayIssued"><option>None</option><option>Upper</option><option>Lower</option><option>Both</option></select></div>
+          </div>
+          <div class="field-grid single"><div class="field"><label>Aligner Stage(s)</label><input class="input" name="alignerStages" placeholder="e.g. U#1&ndash;8, L#10&ndash;20"></div></div>
+        </fieldset>
+        <fieldset>
+          <legend>Reported Issue</legend>
+          <div class="field-grid">
+            <div class="field"><label>Date Received *</label><input class="input" type="date" name="dateReceived" required></div>
+            <div class="field"><label>Return Source *</label><select class="select" name="returnSource" required><option value="">Select&hellip;</option><option>Clinic</option><option>Doctor</option><option>Customer</option></select></div>
+            <div class="field"><label>Issue Category *</label><select class="select" name="issueCategory" required><option value="">Select&hellip;</option><option>Fit / Comfort</option><option>Material Defect</option><option>Attachment / IPR</option><option>Wrong Aligner Shipped</option><option>Damaged in Transit</option><option>Missing Stage</option><option>Other</option></select></div>
+            <div class="field"><label>Priority</label><select class="select" name="priority"><option>Low</option><option selected>Medium</option><option>High</option><option>Urgent</option></select></div>
+            <div class="field"><label>Reported By</label><input class="input" name="reportedBy" placeholder="Region / person logging this"></div>
+            <div class="field"><label>Intake Recipient (Stage 2 contact)</label><input class="input" name="intakeRecipient"></div>
+          </div>
+          <div class="field-grid single"><div class="field"><label>Issue Description</label><textarea name="issueDescription" placeholder="In the reporting person's own words"></textarea></div></div>
+        </fieldset>
+      </form>
+    </div>
+    <div class="panel-foot"><button class="btn ghost" type="button" data-close-new>Cancel</button><button class="btn primary" type="submit" form="newCaseForm">Log Case</button></div>
+  </div>
+</div>
+
+<!-- ============ Detail overlay ============ -->
+<div class="overlay" id="detailOverlay" hidden>
+  <div class="panel" style="max-width:760px;">
+    <div class="panel-header">
+      <div style="flex:1;">
+        <div class="detail-head">
+          <span class="detail-caseid mono" id="dCaseId"></span>
+          <span class="badge" id="dCaseStatusBadge"></span>
+          <span class="badge" id="dPriorityBadge"></span>
+        </div>
+      </div>
+      <button class="btn small" id="editToggleBtn" type="button">Start Editing</button>
+      <button class="btn ghost small" data-close-detail type="button">Close</button>
+    </div>
+    <div class="panel-body" id="detailBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STAGE_NAME = {1:"Intake & Case Logging", 2:"Evaluation & Reprocessing", 3:"Remanufacture & Dispatch"};
+  var ROOT_CAUSES = ["Material Defect","Fabrication Error","Fit / Bite Discrepancy","Shipping Damage","Design / Prescription Error","Other"];
+  var DISPOSITIONS = ["Reprocess & Clear","Reissue (New Box — Local)","Reissue (Same Box — Overseas)","Scrap"];
+
+  var state = {
+    sb: null, session: null,
+    cases: [], filtered: [],
+    filter: { q:"", stage:"", status:"", region:"" },
+    openCaseId: null, editing: false,
+    renewTimer: null, casesChannel: null, detailChannel: null
+  };
+
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function nowISO(){ return new Date().toISOString(); }
+  function fmtDateTime(iso){
+    if(!iso) return "—";
+    try{ var d = new Date(iso); return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) + " · " + d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); }
+    catch(e){ return iso; }
+  }
+  function daysSince(iso){ if(!iso) return 0; return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime())/86400000)); }
+  function stageBadgeClass(stage){ return "badge stage" + stage; }
+  function priorityBadgeClass(p){ var m = {Low:"pr-low", Medium:"pr-medium", High:"pr-high", Urgent:"pr-urgent"}; return "badge " + (m[p] || "pr-low"); }
+  function isOpenCase(c){ return c.case_status === "Open" || c.case_status === "In Progress" || c.case_status === "On Hold"; }
+
+  function toast(msg, type){
+    var stack = document.getElementById("toastStack");
+    var el = document.createElement("div");
+    el.className = "toast" + (type ? " " + type : "");
+    el.textContent = msg;
+    stack.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 4200);
+  }
+
+  // ---------------------------------------------------------------------
+  // Boot
+  // ---------------------------------------------------------------------
+  function boot(){
+    var url = window.__SUPABASE_URL__, key = window.__SUPABASE_ANON_KEY__;
+    if(!url || !key || url.indexOf("YOUR_") === 0 || key.indexOf("YOUR_") === 0){
+      document.getElementById("configWarn").hidden = false;
+      return;
+    }
+    if(!window.supabase || !window.supabase.createClient){
+      document.getElementById("configWarn").hidden = false;
+      toast("Couldn't load the Supabase library — check your internet connection and reload.", "error");
+      return;
+    }
+    state.sb = window.supabase.createClient(url, key);
+
+    state.sb.auth.onAuthStateChange(function(event, session){
+      state.session = session;
+      if(session){ showApp(); } else { showLogin(); }
+    });
+    state.sb.auth.getSession().then(function(res){
+      state.session = res.data && res.data.session;
+      if(state.session) showApp(); else showLogin();
+    });
+  }
+
+  function showLogin(){
+    document.getElementById("app").hidden = true;
+    document.getElementById("loginScreen").hidden = false;
+  }
+  function showApp(){
+    document.getElementById("loginScreen").hidden = true;
+    document.getElementById("app").hidden = false;
+    document.getElementById("viewerChip").textContent = state.session.user.email;
+    setStatus(true, "Live");
+    subscribeCases();
+  }
+
+  document.getElementById("loginBtn").addEventListener("click", async function(){
+    var email = document.getElementById("loginEmail").value.trim();
+    var note = document.getElementById("loginNote");
+    if(!email){ note.textContent = "Enter your email first."; return; }
+    var btn = document.getElementById("loginBtn");
+    btn.disabled = true;
+    try{
+      var res = await state.sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } });
+      if(res.error){ note.textContent = res.error.message; }
+      else { note.textContent = "Check " + email + " for a login link. You can close this tab after clicking it."; }
+    }catch(err){
+      note.textContent = "Couldn't send the link — try again in a moment.";
+    }finally{ btn.disabled = false; }
+  });
+
+  document.getElementById("signOutBtn").addEventListener("click", function(){ state.sb.auth.signOut(); });
+
+  function setStatus(live, text){
+    var dot = document.getElementById("statusDot");
+    dot.className = "status-dot " + (live ? "live" : "down");
+    document.getElementById("statusText").textContent = text;
+  }
+
+  // ---------------------------------------------------------------------
+  // Data layer
+  // ---------------------------------------------------------------------
+  async function fetchCases(){
+    var res = await state.sb.from("cases").select("*").order("updated_at", { ascending:false }).limit(500);
+    if(res.error){ toast("Couldn't load cases: " + res.error.message, "error"); setStatus(false, "Error"); return; }
+    state.cases = res.data || [];
+    applyFilters(); renderStats(); renderTable();
+    if(state.openCaseId){
+      var found = state.cases.find(function(c){ return c.id === state.openCaseId; });
+      if(found) refreshDetail(found.id);
+    }
+  }
+
+  function subscribeCases(){
+    fetchCases();
+    if(state.casesChannel) state.sb.removeChannel(state.casesChannel);
+    state.casesChannel = state.sb.channel("cases-list")
+      .on("postgres_changes", { event:"*", schema:"public", table:"cases" }, function(){ fetchCases(); })
+      .subscribe(function(status){
+        if(status === "SUBSCRIBED") setStatus(true, "Live");
+        else if(status === "CHANNEL_ERROR" || status === "TIMED_OUT") setStatus(false, "Connection issue");
+      });
+  }
+
+  // ---------------------------------------------------------------------
+  // Filtering / stats / table (same logic as before, snake_case fields)
+  // ---------------------------------------------------------------------
+  function applyFilters(){
+    var q = state.filter.q.trim().toLowerCase();
+    state.filtered = state.cases.filter(function(c){
+      if(state.filter.stage && String(c.current_stage) !== state.filter.stage) return false;
+      if(state.filter.status && c.case_status !== state.filter.status) return false;
+      if(state.filter.region && c.region !== state.filter.region) return false;
+      if(q){
+        var hay = [c.id, c.patient_name, c.treating_doctor, c.box_label].join(" ").toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderStats(){
+    var s1=0,s2=0,s3=0,overdue=0,openTotal=0;
+    state.cases.forEach(function(c){
+      if(!isOpenCase(c)) return;
+      openTotal++;
+      if(c.current_stage===1) s1++; if(c.current_stage===2) s2++; if(c.current_stage===3) s3++;
+      if(daysSince(c.last_stage_change_at) >= 7) overdue++;
+    });
+    var tiles = [
+      {label:"Open Cases", num:openTotal, key:""},
+      {label:"Stage 1 · Intake", num:s1, key:"1"},
+      {label:"Stage 2 · QCD Evaluation", num:s2, key:"2"},
+      {label:"Stage 3 · Production", num:s3, key:"3"},
+      {label:"7+ Days in Stage", num:overdue, key:"__overdue", crit:overdue>0}
+    ];
+    var grid = document.getElementById("statGrid");
+    grid.innerHTML = tiles.map(function(t){
+      var active = (t.key === "" && !state.filter.stage) || (t.key !== "" && t.key !== "__overdue" && state.filter.stage === t.key);
+      return '<div class="stat-tile '+(t.crit?"crit":"")+(active?" active":"")+'" data-stage-key="'+esc(t.key)+'"><div class="stat-num">'+t.num+'</div><div class="stat-label">'+esc(t.label)+'</div></div>';
+    }).join("");
+    Array.prototype.forEach.call(grid.querySelectorAll(".stat-tile"), function(el){
+      el.addEventListener("click", function(){
+        var key = el.getAttribute("data-stage-key");
+        if(key !== "__overdue"){ document.getElementById("filterStage").value = key; state.filter.stage = key; applyFilters(); renderTable(); }
+        else toast("Showing all cases — sort by Days in Stage to review the 7+ day list.");
+      });
+    });
+  }
+
+  function renderTable(){
+    var body = document.getElementById("tableBody");
+    document.getElementById("resultCount").textContent = state.filtered.length + " of " + state.cases.length + " shown";
+    if(state.filtered.length === 0){
+      body.innerHTML = '<tr><td colspan="8"><div class="empty-row">No cases match — try clearing filters, or log a new case.</div></td></tr>';
+      return;
+    }
+    var rows = state.filtered.slice().sort(function(a,b){ return daysSince(b.last_stage_change_at) - daysSince(a.last_stage_change_at); });
+    body.innerHTML = rows.map(function(c){
+      var days = daysSince(c.last_stage_change_at);
+      var dCls = days>=7 ? "days-tag crit" : days>=3 ? "days-tag warn" : "days-tag";
+      var closed = !isOpenCase(c);
+      return '<tr data-case-id="'+esc(c.id)+'">' +
+        '<td class="case-id">'+esc(c.id)+'</td>' +
+        '<td>'+esc(c.patient_name||"—")+(c.treating_doctor ? ' <span style="color:var(--ink-faint)">/ '+esc(c.treating_doctor)+'</span>' : '')+'</td>' +
+        '<td>'+esc(c.region||"—")+'</td>' +
+        '<td><span class="'+(closed?"badge closed":stageBadgeClass(c.current_stage))+'">'+(closed ? esc(c.case_status) : "Stage "+c.current_stage)+'</span></td>' +
+        '<td>'+esc(c.stage_status||"—")+'</td>' +
+        '<td><span class="'+priorityBadgeClass(c.priority)+'">'+esc(c.priority||"Medium")+'</span></td>' +
+        '<td>'+esc(c.current_owner||"—")+'</td>' +
+        '<td><span class="'+dCls+'">'+(closed ? "—" : days+"d")+'</span></td></tr>';
+    }).join("");
+    Array.prototype.forEach.call(body.querySelectorAll("tr[data-case-id]"), function(tr){
+      tr.addEventListener("click", function(){ openDetail(tr.getAttribute("data-case-id")); });
+    });
+  }
+
+  document.getElementById("searchInput").addEventListener("input", function(e){ state.filter.q = e.target.value; applyFilters(); renderTable(); });
+  document.getElementById("filterStage").addEventListener("change", function(e){ state.filter.stage = e.target.value; applyFilters(); renderTable(); renderStats(); });
+  document.getElementById("filterStatus").addEventListener("change", function(e){ state.filter.status = e.target.value; applyFilters(); renderTable(); });
+  document.getElementById("filterRegion").addEventListener("change", function(e){ state.filter.region = e.target.value; applyFilters(); renderTable(); });
+
+  // ---------------------------------------------------------------------
+  // New case
+  // ---------------------------------------------------------------------
+  var newCaseOverlay = document.getElementById("newCaseOverlay");
+  document.getElementById("newCaseBtn").addEventListener("click", function(){
+    document.getElementById("newCaseForm").reset();
+    document.querySelector('#newCaseForm [name="dateReceived"]').value = todayISO();
+    newCaseOverlay.hidden = false;
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-close-new]"), function(b){ b.addEventListener("click", function(){ newCaseOverlay.hidden = true; }); });
+
+  document.getElementById("newCaseForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var fd = new FormData(e.target);
+    var data = {}; fd.forEach(function(v,k){ data[k] = typeof v === "string" ? v.trim() : v; });
+    if(!data.caseId){ toast("Case ID is required.", "error"); return; }
+    try{
+      var existing = await state.sb.from("cases").select("id").eq("id", data.caseId).maybeSingle();
+      if(existing.data){ toast("Case ID " + data.caseId + " already exists.", "error"); return; }
+      var ts = nowISO();
+      var row = {
+        id: data.caseId, case_origin: data.caseOrigin || null, box_label: data.boxLabel || "",
+        region: data.region || null, patient_name: data.patientName || "", treating_doctor: data.treatingDoctor || "",
+        container_type: data.containerType || "Box", aligner_stages: data.alignerStages || "",
+        transfer_tray_issued: data.transferTrayIssued || "None", date_received: data.dateReceived || todayISO(),
+        return_source: data.returnSource || null, issue_category: data.issueCategory || "", issue_description: data.issueDescription || "",
+        reported_by: data.reportedBy || "", intake_recipient: data.intakeRecipient || "",
+        current_stage: 1, stage_status: "Logged", current_owner: state.session.user.email, priority: data.priority || "Medium",
+        case_status: "Open", created_at: ts, updated_at: ts, last_stage_change_at: ts
+      };
+      var ins = await state.sb.from("cases").insert(row);
+      if(ins.error){ toast("Couldn't save: " + ins.error.message, "error"); return; }
+      await logActivity(data.caseId, "Case logged at Intake & Case Logging (Region Support, " + (data.region||"—") + ").");
+      toast("Case " + data.caseId + " logged.", "success");
+      newCaseOverlay.hidden = true;
+      openDetail(data.caseId);
+    }catch(err){ toast("Couldn't save: " + (err && err.message ? err.message : "unknown error"), "error"); }
+  });
+
+  async function logActivity(caseId, note){
+    await state.sb.from("case_activity_log").insert({ case_id: caseId, ts: nowISO(), actor: state.session.user.email, note: note });
+  }
+
+  // ---------------------------------------------------------------------
+  // Detail / edit
+  // ---------------------------------------------------------------------
+  var detailOverlay = document.getElementById("detailOverlay");
+
+  function openDetail(caseId){
+    state.openCaseId = caseId; state.editing = false; stopRenew();
+    detailOverlay.hidden = false; detailOverlay.scrollTop = 0;
+    document.getElementById("editToggleBtn").textContent = "Start Editing";
+    if(state.detailChannel) state.sb.removeChannel(state.detailChannel);
+    state.detailChannel = state.sb.channel("case-" + caseId)
+      .on("postgres_changes", { event:"*", schema:"public", table:"cases", filter:"id=eq."+caseId }, function(){ refreshDetail(caseId); })
+      .on("postgres_changes", { event:"*", schema:"public", table:"case_activity_log", filter:"case_id=eq."+caseId }, function(){ refreshDetail(caseId); })
+      .subscribe();
+    refreshDetail(caseId);
+  }
+  function closeDetail(){
+    detailOverlay.hidden = true; state.openCaseId = null; state.editing = false; stopRenew();
+    if(state.detailChannel){ state.sb.removeChannel(state.detailChannel); state.detailChannel = null; }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-close-detail]"), function(b){ b.addEventListener("click", closeDetail); });
+  function stopRenew(){ if(state.renewTimer){ clearInterval(state.renewTimer); state.renewTimer = null; } }
+
+  async function refreshDetail(caseId){
+    var caseRes = await state.sb.from("cases").select("*").eq("id", caseId).maybeSingle();
+    if(!caseRes.data){ toast("This case no longer exists.", "error"); closeDetail(); return; }
+    var logRes = await state.sb.from("case_activity_log").select("*").eq("case_id", caseId).order("ts", { ascending:false });
+    var reissueRes = await state.sb.from("case_reissue_history").select("*").eq("case_id", caseId).order("reissued_on", { ascending:true });
+    renderDetail(caseRes.data, logRes.data || [], reissueRes.data || []);
+  }
+
+  document.getElementById("editToggleBtn").addEventListener("click", async function(){
+    if(state.editing){
+      state.editing = false; stopRenew(); refreshDetail(state.openCaseId); return;
+    }
+    try{
+      var res = await tryAcquireLock(state.openCaseId);
+      if(res.acquired){
+        state.editing = true; toast("Editing unlocked for you.", "success"); stopRenew();
+        state.renewTimer = setInterval(function(){ tryAcquireLock(state.openCaseId); }, 90000);
+      } else {
+        toast("Someone else is currently editing this case (" + (res.lockedBy||"unknown") + ") — try again shortly.", "error");
+      }
+      refreshDetail(state.openCaseId);
+    }catch(err){ toast("Couldn't get an edit lock: " + (err && err.message ? err.message : "unknown error"), "error"); }
+  });
+
+  // Atomic lock: an UPDATE with a WHERE clause that only matches when the
+  // lock is free, expired, or already ours — Postgres' row-level locking
+  // makes this a real compare-and-swap, not just a cooperative convention.
+  async function tryAcquireLock(caseId){
+    var me = state.session.user.email;
+    var until = new Date(Date.now() + 120000).toISOString();
+    var nowIso = nowISO();
+    var res = await state.sb.from("cases")
+      .update({ locked_by: me, locked_until: until })
+      .eq("id", caseId)
+      .or("locked_by.is.null,locked_until.lt." + nowIso + ",locked_by.eq." + me)
+      .select();
+    if(res.error) throw res.error;
+    if(res.data && res.data.length > 0) return { acquired:true };
+    var current = await state.sb.from("cases").select("locked_by").eq("id", caseId).maybeSingle();
+    return { acquired:false, lockedBy: current.data ? current.data.locked_by : null };
+  }
+
+  function stageStrip(current){
+    return '<div class="stage-strip">' + [1,2,3].map(function(n){
+      var cls = n < current ? "done" : n === current ? "current" : "";
+      return '<div class="stage-step '+cls+'">Stage '+n+'<br>'+esc(STAGE_NAME[n])+'</div>';
+    }).join("") + '</div>';
+  }
+  function kv(k,v){ return '<div class="kv"><span class="k">'+esc(k)+'</span><span class="v">'+(v ? esc(v) : "—")+'</span></div>'; }
+  function actionBtn(id, label, cls){ return '<button class="btn '+(cls||"")+'" id="'+id+'" type="button">'+esc(label)+'</button>'; }
+
+  function renderDetail(c, log, reissueHistory){
+    document.getElementById("dCaseId").textContent = c.id;
+    var closed = !isOpenCase(c);
+    document.getElementById("dCaseStatusBadge").className = closed ? "badge closed" : stageBadgeClass(c.current_stage);
+    document.getElementById("dCaseStatusBadge").textContent = c.case_status;
+    document.getElementById("dPriorityBadge").className = priorityBadgeClass(c.priority);
+    document.getElementById("dPriorityBadge").textContent = c.priority || "Medium";
+
+    var days = daysSince(c.last_stage_change_at);
+    var editBtn = document.getElementById("editToggleBtn");
+    editBtn.textContent = state.editing ? "Done Editing" : "Start Editing";
+    editBtn.classList.toggle("primary", state.editing);
+
+    var lockActive = c.locked_by && c.locked_until && new Date(c.locked_until) > new Date();
+    var lockHtml = "";
+    if(state.editing){
+      lockHtml = '<div class="lock-banner mine">You have this case open for editing — the lock auto-renews and releases when you close or click "Done Editing".</div>';
+    } else if(lockActive && c.locked_by !== state.session.user.email){
+      lockHtml = '<div class="lock-banner busy">Currently being edited by <b>'+esc(c.locked_by)+'</b>. You can view live, but changes are blocked until they finish (locks expire automatically after a couple of minutes of inactivity).</div>';
+    }
+
+    var html = lockHtml + stageStrip(c.current_stage);
+    if(!closed) html += '<div class="action-row" id="stageActions"></div>';
+
+    html += '<fieldset><legend>Identification</legend><div class="kv-grid">' +
+      kv("Case Origin", c.case_origin) + kv("Box Label", c.box_label) +
+      kv("Region / Branch", c.region) + kv("Container Type", c.container_type) +
+      kv("Patient", c.patient_name) + kv("Treating Doctor", c.treating_doctor) +
+      kv("Aligner Stage(s)", c.aligner_stages) + kv("Transfer Tray Issued", c.transfer_tray_issued) +
+      '</div></fieldset>';
+
+    if(c.linked_case_id){
+      html += '<div class="hint-box">' + (c.linked_case_type === "reissued_as"
+        ? "Reissued as a new box under Case " + esc(c.linked_case_id) + "."
+        : "Reissued from original Case " + esc(c.linked_case_id) + ".") + '</div>';
+    }
+    if(reissueHistory && reissueHistory.length){
+      html += '<div class="hint-box">Overseas reissue history: ' + reissueHistory.map(function(r){ return "→ " + esc(r.new_case_id) + " (" + esc(r.reissued_on) + ")"; }).join(", ") + '</div>';
+    }
+
+    html += '<fieldset><legend>Reported Issue</legend><div class="kv-grid">' +
+      kv("Date Received", c.date_received) + kv("Return Source", c.return_source) +
+      kv("Issue Category", c.issue_category) + kv("Reported By", c.reported_by) +
+      kv("Intake Recipient", c.intake_recipient) + kv("Current Owner", c.current_owner) + '</div>';
+    html += '<div class="kv" style="display:block;"><div class="k" style="margin-bottom:5px;">Issue Description</div><div class="v" style="text-align:left;font-weight:400;">' + (esc(c.issue_description) || "—") + '</div></div></fieldset>';
+
+    html += '<fieldset><legend>Timing</legend><div class="kv-grid">' +
+      kv("Dispatched to Stage 2", c.dispatched_to_stage2) + kv("Received at Stage 2", c.received_at_stage2) +
+      kv("Dispatched to Stage 3", c.dispatched_to_stage3) + kv("Shipped Date", c.shipped_date) +
+      kv("Days in Current Stage", closed ? "—" : days + " day" + (days===1?"":"s")) + '</div></fieldset>';
+
+    if(c.root_cause_category || c.disposition || c.evaluation_notes || c.action_taken){
+      html += '<fieldset><legend>Resolution</legend><div class="kv-grid">' + kv("Root Cause Category", c.root_cause_category) + kv("Disposition", c.disposition) + '</div>';
+      if(c.evaluation_notes) html += '<div class="kv" style="display:block;"><div class="k" style="margin-bottom:5px;">Evaluation Notes</div><div class="v" style="text-align:left;font-weight:400;">'+esc(c.evaluation_notes)+'</div></div>';
+      if(c.action_taken) html += '<div class="kv" style="display:block;"><div class="k" style="margin-bottom:5px;">Action Taken</div><div class="v" style="text-align:left;font-weight:400;">'+esc(c.action_taken)+'</div></div>';
+      html += '</fieldset>';
+    }
+
+    html += '<fieldset><legend>Activity Log</legend><ul class="log-list">' +
+      log.map(function(l){ return '<li class="log-item"><div class="log-meta">'+fmtDateTime(l.ts)+' &middot; '+esc(l.actor)+'</div><div class="log-note">'+esc(l.note)+'</div></li>'; }).join("") +
+      '</ul></fieldset>';
+
+    if(state.editing){
+      html += '<fieldset><legend>Danger Zone</legend><button class="btn danger small" id="deleteCaseBtn" type="button">Delete This Case Record</button>' +
+        '<div class="field-note" style="margin-top:8px;">Use this only to correct a mistaken entry (e.g. wrong Case ID typed). This cannot be undone.</div></fieldset>';
+    }
+
+    document.getElementById("detailBody").innerHTML = html;
+    if(!closed) renderStageActions(c);
+    if(state.editing){
+      var delBtn = document.getElementById("deleteCaseBtn");
+      if(delBtn) delBtn.addEventListener("click", function(){ confirmDelete(c.id); });
+    }
+  }
+
+  function renderStageActions(c){
+    var box = document.getElementById("stageActions");
+    if(!box) return;
+    var disabled = !state.editing;
+    var html = "";
+    if(c.current_stage === 1){
+      html += actionBtn("actDispatch2", "Dispatch to Stage 2 (QCD)", "primary");
+    } else if(c.current_stage === 2){
+      if(c.stage_status === "Received") html += actionBtn("actUnderEval", "Mark Under Evaluation", "");
+      if(c.stage_status === "Received" || c.stage_status === "Under Evaluation") html += actionBtn("actReprocessing", "Mark Reprocessing", "");
+      html += actionBtn("actResolveStage2", "Resolve & Clear / Reissue / Scrap", "primary");
+    } else if(c.current_stage === 3){
+      if(c.stage_status === "Received") html += actionBtn("actInProd", "Mark In Production", "");
+      if(c.stage_status === "Received" || c.stage_status === "In Production") html += actionBtn("actPackaging", "Mark Packaging", "");
+      html += actionBtn("actShip", "Ship & Close Case", "primary");
+      html += actionBtn("actRework", "Return for Rework (to QCD)", "danger");
+    }
+    box.innerHTML = html;
+    Array.prototype.forEach.call(box.querySelectorAll("button"), function(b){ b.disabled = disabled; });
+    if(disabled) return;
+
+    var g = function(id){ return document.getElementById(id); };
+    if(g("actDispatch2")) g("actDispatch2").addEventListener("click", function(){
+      runAction(c.id, { current_stage:2, stage_status:"Received", dispatched_to_stage2: todayISO(), last_stage_change_at: nowISO() }, "Dispatched to Stage 2 — Evaluation & Reprocessing (QCD).");
+    });
+    if(g("actUnderEval")) g("actUnderEval").addEventListener("click", function(){
+      runAction(c.id, { stage_status:"Under Evaluation", received_at_stage2: c.received_at_stage2 || todayISO() }, "Marked Under Evaluation at QCD.");
+    });
+    if(g("actReprocessing")) g("actReprocessing").addEventListener("click", function(){
+      runAction(c.id, { stage_status:"Reprocessing", received_at_stage2: c.received_at_stage2 || todayISO() }, "Marked Reprocessing at QCD.");
+    });
+    if(g("actInProd")) g("actInProd").addEventListener("click", function(){
+      runAction(c.id, { stage_status:"In Production" }, "Marked In Production at Production Control.");
+    });
+    if(g("actPackaging")) g("actPackaging").addEventListener("click", function(){
+      runAction(c.id, { stage_status:"Packaging" }, "Marked Packaging at Production Control.");
+    });
+    if(g("actShip")) g("actShip").addEventListener("click", function(){
+      runAction(c.id, { stage_status:"Dispatched — Case Closed", case_status:"Resolved — Closed", shipped_date: todayISO(), last_stage_change_at: nowISO() },
+        "Shipped and dispatched back to " + (c.return_source || "sender") + " — case closed.");
+    });
+    if(g("actRework")) g("actRework").addEventListener("click", function(){
+      runAction(c.id, { current_stage:2, stage_status:"Received", last_stage_change_at: nowISO() }, "Returned to Evaluation & Reprocessing — non-conformance found during remanufacture.");
+    });
+    if(g("actResolveStage2")) g("actResolveStage2").addEventListener("click", function(){ openResolvePanel(c); });
+  }
+
+  async function runAction(caseId, patch, note){
+    try{
+      var res = await state.sb.from("cases").update(patch).eq("id", caseId);
+      if(res.error){ toast("Couldn't update: " + res.error.message, "error"); return; }
+      await logActivity(caseId, note);
+      toast("Updated.", "success");
+    }catch(err){ toast("Couldn't update: " + (err && err.message ? err.message : "unknown error"), "error"); }
+  }
+
+  function openResolvePanel(c){
+    var body = document.getElementById("detailBody");
+    var block = document.createElement("div");
+    block.className = "disposition-block";
+    block.innerHTML =
+      '<div class="field-grid">' +
+      '<div class="field"><label>Root Cause Category</label><select class="select" id="rcCat"><option value="">Select…</option>' + ROOT_CAUSES.map(function(r){return '<option>'+esc(r)+'</option>';}).join('') + '</select></div>' +
+      '<div class="field"><label>Disposition *</label><select class="select" id="rcDisp"><option value="">Select…</option>' + DISPOSITIONS.map(function(r){return '<option>'+esc(r)+'</option>';}).join('') + '</select></div>' +
+      '</div>' +
+      '<div class="field" style="margin-bottom:10px;"><label>Evaluation Notes</label><textarea id="rcNotes" placeholder="What was actually found"></textarea></div>' +
+      '<div class="field" style="margin-bottom:10px;"><label>Action Taken</label><textarea id="rcAction" placeholder="What was reprocessed / remanufactured"></textarea></div>' +
+      '<div id="rcReissueFields"></div>' +
+      '<div class="action-row" style="margin-top:12px;"><button class="btn primary small" id="rcSubmit" type="button">Save Resolution</button><button class="btn ghost small" id="rcCancel" type="button">Cancel</button></div>';
+    body.appendChild(block);
+    block.scrollIntoView({behavior:"smooth", block:"center"});
+
+    document.getElementById("rcDisp").addEventListener("change", function(e){
+      var f = document.getElementById("rcReissueFields");
+      if(e.target.value === "Reissue (New Box — Local)"){
+        f.innerHTML = '<div class="field-grid"><div class="field"><label>New Case ID *</label><input class="input" id="rcNewCaseId"></div>' +
+          '<div class="field"><label>New Box Label</label><input class="input" id="rcNewBoxLabel"></div></div>' +
+          '<div class="field-note">This closes the current record as Superseded and opens a new one, cross-linked, starting at Stage 3.</div>';
+      } else if(e.target.value === "Reissue (Same Box — Overseas)"){
+        f.innerHTML = '<div class="field-grid"><div class="field"><label>New Case ID *</label><input class="input" id="rcNewCaseId"></div></div>' +
+          '<div class="field-note">Logged on this same record\'s history — no new box.</div>';
+      } else { f.innerHTML = ""; }
+    });
+
+    document.getElementById("rcCancel").addEventListener("click", function(){ block.remove(); });
+    document.getElementById("rcSubmit").addEventListener("click", async function(){
+      var disp = document.getElementById("rcDisp").value;
+      var rcCat = document.getElementById("rcCat").value;
+      var notes = document.getElementById("rcNotes").value.trim();
+      var action = document.getElementById("rcAction").value.trim();
+      if(!disp){ toast("Choose a disposition.", "error"); return; }
+      try{ await resolveStage2(c, disp, rcCat, notes, action); block.remove(); }
+      catch(err){ if(err && err.message !== "handled") toast("Couldn't save resolution: " + (err && err.message ? err.message : "unknown error"), "error"); }
+    });
+  }
+
+  async function resolveStage2(c, disposition, rootCause, notes, action){
+    var ts = nowISO();
+    var base = { root_cause_category: rootCause, disposition: disposition, evaluation_notes: notes, action_taken: action };
+
+    if(disposition === "Scrap"){
+      var r = await state.sb.from("cases").update(Object.assign({}, base, { case_status:"Resolved — Closed", last_stage_change_at: ts })).eq("id", c.id);
+      if(r.error){ toast(r.error.message, "error"); throw new Error("handled"); }
+      await logActivity(c.id, "Resolved at Evaluation & Reprocessing — Scrap. " + (notes || ""));
+      toast("Case closed (scrapped).", "success");
+      return;
+    }
+
+    if(disposition === "Reprocess & Clear" || disposition === "Reissue (Same Box — Overseas)"){
+      var patch = Object.assign({}, base, { current_stage:3, stage_status:"Received", dispatched_to_stage3: todayISO(), last_stage_change_at: ts });
+      var note = "Cleared for Production at Evaluation & Reprocessing.";
+      var newId = null;
+      if(disposition === "Reissue (Same Box — Overseas)"){
+        newId = (document.getElementById("rcNewCaseId") || {}).value;
+        newId = newId ? newId.trim() : "";
+        if(!newId){ toast("Enter the new Case ID for the overseas reissue.", "error"); throw new Error("handled"); }
+        note = "Cleared for Production — reissued under new Case ID " + newId + " (overseas, same box).";
+      }
+      var r2 = await state.sb.from("cases").update(patch).eq("id", c.id);
+      if(r2.error){ toast(r2.error.message, "error"); throw new Error("handled"); }
+      if(newId){ await state.sb.from("case_reissue_history").insert({ case_id: c.id, new_case_id: newId, reissued_on: todayISO() }); }
+      await logActivity(c.id, note);
+      toast("Case cleared for production.", "success");
+      return;
+    }
+
+    if(disposition === "Reissue (New Box — Local)"){
+      var newCaseId = (document.getElementById("rcNewCaseId") || {}).value;
+      var newBoxLabel = (document.getElementById("rcNewBoxLabel") || {}).value;
+      newCaseId = newCaseId ? newCaseId.trim() : "";
+      if(!newCaseId){ toast("Enter the new Case ID for the local reissue.", "error"); throw new Error("handled"); }
+      var existing = await state.sb.from("cases").select("id").eq("id", newCaseId).maybeSingle();
+      if(existing.data){ toast("Case ID " + newCaseId + " already exists.", "error"); throw new Error("handled"); }
+
+      var r3 = await state.sb.from("cases").update(Object.assign({}, base, {
+        case_status:"Closed — Superseded", stage_status:"Superseded — New Box Issued",
+        linked_case_type:"reissued_as", linked_case_id: newCaseId, last_stage_change_at: ts
+      })).eq("id", c.id);
+      if(r3.error){ toast(r3.error.message, "error"); throw new Error("handled"); }
+
+      var newRow = {
+        id: newCaseId, case_origin:"Local", box_label: newBoxLabel || "",
+        linked_case_type:"reissued_from", linked_case_id: c.id,
+        patient_name: c.patient_name, treating_doctor: c.treating_doctor, region: c.region,
+        container_type: c.container_type, aligner_stages: c.aligner_stages, transfer_tray_issued: c.transfer_tray_issued,
+        date_received: c.date_received, return_source: c.return_source, issue_category: c.issue_category,
+        issue_description: c.issue_description, reported_by: c.reported_by, intake_recipient: c.intake_recipient,
+        current_stage: 3, stage_status: "Received", current_owner: c.current_owner, priority: c.priority,
+        dispatched_to_stage2: c.dispatched_to_stage2, received_at_stage2: c.received_at_stage2,
+        dispatched_to_stage3: todayISO(), root_cause_category: rootCause, disposition: disposition,
+        evaluation_notes: notes, action_taken: action, case_status: "In Progress",
+        created_at: ts, updated_at: ts, last_stage_change_at: ts
+      };
+      var insNew = await state.sb.from("cases").insert(newRow);
+      if(insNew.error){ toast(insNew.error.message, "error"); throw new Error("handled"); }
+
+      await logActivity(c.id, "Superseded — new box issued under Case " + newCaseId + ".");
+      await logActivity(newCaseId, "New box issued — reissued from Case " + c.id + " after clearance at Evaluation & Reprocessing.");
+      toast("New case " + newCaseId + " created and linked.", "success");
+      openDetail(newCaseId);
+      return;
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Delete (custom confirm, no native dialogs)
+  // ---------------------------------------------------------------------
+  var confirmOverlay = null;
+  function confirmDelete(caseId){
+    if(confirmOverlay) confirmOverlay.remove();
+    confirmOverlay = document.createElement("div");
+    confirmOverlay.className = "overlay";
+    confirmOverlay.style.zIndex = "90";
+    confirmOverlay.innerHTML = '<div class="panel" style="max-width:420px;"><div class="panel-body" style="text-align:center;">' +
+      '<p style="margin:0 0 16px;font-size:14.5px;">Permanently delete Case <b class="mono">'+esc(caseId)+'</b>? This cannot be undone.</p>' +
+      '<div class="action-row" style="justify-content:center;"><button class="btn danger" id="confirmDelBtn" type="button">Delete Permanently</button><button class="btn ghost" id="cancelDelBtn" type="button">Cancel</button></div>' +
+      '</div></div>';
+    document.body.appendChild(confirmOverlay);
+    document.getElementById("cancelDelBtn").addEventListener("click", function(){ confirmOverlay.remove(); });
+    document.getElementById("confirmDelBtn").addEventListener("click", async function(){
+      try{
+        var r = await state.sb.from("cases").delete().eq("id", caseId);
+        if(r.error){ toast("Couldn't delete: " + r.error.message, "error"); return; }
+        toast("Case " + caseId + " deleted.", "success");
+        confirmOverlay.remove();
+        closeDetail();
+      }catch(err){ toast("Couldn't delete: " + (err && err.message ? err.message : "unknown error"), "error"); }
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // CSV export — plain browser download, no special capability needed
+  // ---------------------------------------------------------------------
+  var CSV_COLS = ["id","case_origin","box_label","region","patient_name","treating_doctor","container_type","aligner_stages","transfer_tray_issued",
+    "date_received","return_source","issue_category","issue_description","reported_by","intake_recipient",
+    "current_stage","stage_status","current_owner","priority",
+    "dispatched_to_stage2","received_at_stage2","dispatched_to_stage3","shipped_date",
+    "root_cause_category","disposition","evaluation_notes","action_taken","case_status","created_at","updated_at"];
+
+  function csvEscape(v){ if(v == null) return ""; var s = String(v); if(/[",\n]/.test(s)) s = '"' + s.replace(/"/g,'""') + '"'; return s; }
+
+  document.getElementById("exportBtn").addEventListener("click", async function(){
+    var btn = document.getElementById("exportBtn");
+    btn.disabled = true; var origText = btn.textContent; btn.textContent = "Exporting…";
+    try{
+      var res = await state.sb.from("cases").select("*").order("id");
+      if(res.error){ toast("Export failed: " + res.error.message, "error"); return; }
+      var rows = res.data || [];
+      var lines = [CSV_COLS.join(",")];
+      rows.forEach(function(r){ lines.push(CSV_COLS.map(function(col){ return csvEscape(r[col]); }).join(",")); });
+      var csv = lines.join("\r\n");
+      var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "case-box-tracker-" + todayISO() + ".csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+      toast("Exported " + rows.length + " cases.", "success");
+    }catch(err){ toast("Export failed: " + (err && err.message ? err.message : "unknown error"), "error"); }
+    finally{ btn.disabled = false; btn.textContent = origText; }
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>
